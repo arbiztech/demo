@@ -1,0 +1,34 @@
+#!/bin/bash
+# 終了時に必ず接続解除するトラップ（正常終了/エラー/中断でも実行）
+cleanup() {
+  db2 connect reset >/dev/null 2>&1 || true
+}
+trap cleanup EXIT INT TERM
+
+# DB接続（ここは触らなくてOK）
+. ./connect.sh || exit 1
+
+# ========================= ここから「設定エリア」=========================
+# ここだけ変更してください（わからなければそのままでOK）
+# - CHUNK: 1つのSQLファイルに含める行数（チャンクサイズ）。例) 100000
+# - MASK_FILE: マスク定義CSVのパス（相対パス/絶対パスどちらでも可）
+# - OUT_DIR: 出力先フォルダのパス（事前に存在している必要があります）
+CHUNK=500       
+MASK_FILE="/home/db2inst1/mask.csv" 
+OUT_DIR="/home/db2inst1/output/csv"        
+INPUT_DIR="/home/db2inst1/output"
+MULTI_FLAG="ON"  # 複数モード（ON/OFF, 1/0, true/false など）
+
+# 対象テーブル名をこの配列に書き並べてください（行を増減してOK）
+# 例）"APP.CUSTOMER" のように スキーマ.テーブル名 形式がおすすめ
+# 例）"テーブル名A" の行を削除/追加して管理してください
+# ----------------------------------------------------------------------
+tables=(
+  "EMP" 
+)
+# ========================= ここまで「設定エリア」=========================
+
+# ここから下は原則編集不要（設定に従って順番に処理します）
+for t in "${tables[@]}"; do
+  . ./export_csv_simple.sh -T "$t" -O "$OUT_DIR" -I "$INPUT_DIR" -M "$MULTI_FLAG" || exit 1
+done
